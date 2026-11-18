@@ -132,7 +132,9 @@ def make_quote(items: list, customer: str = "Покупатель", delivery: st
     for item in items:
         product = PRODUCTS_BY_ID.get(item.get("product_id", ""))
         if product is None:
-            problems.append(f"нет товара {item.get('product_id')}")
+            # Подсказка модели: id она взяла с потолка — пусть сначала поищет
+            problems.append(f"нет товара с id {item.get('product_id')} — "
+                            "найди правильный id через search_products")
             continue
         qty = int(item.get("qty", 1) or 1)
         size = str(item.get("size", "") or "")
@@ -143,7 +145,9 @@ def make_quote(items: list, customer: str = "Покупатель", delivery: st
             problems.append(f"{product['name']}: не указан размер")
             continue
         if available < qty:
-            problems.append(f"{product['name']} (размер {size}): в наличии {available} шт.")
+            size_note = "" if size == "one" else f" (размер {size})"  # "one" — служебное, клиенту не показываем
+            problems.append(f"{product['name']}{size_note}: в наличии {available} шт., "
+                            f"а просили {qty} — в КП не включено")
             continue
         total = product["price"] * qty
         subtotal += total

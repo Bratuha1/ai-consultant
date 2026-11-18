@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Консультант «Старт»</title>
+<style>
+  :root {
+    --bg: #f4f5f7; --panel: #ffffff; --text: #1d2129; --muted: #6b7280;
+    --line: #e5e7eb; --accent: #16a34a; --accent-soft: #dcfce7;
+    --user: #1d4ed8; --user-text: #ffffff; --bot: #f1f3f5; --warn: #b45309;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+         background: var(--bg); color: var(--text); height: 100vh; display: flex; flex-direction: column; }
+
+  header { display: flex; align-items: center; gap: 12px; padding: 12px 20px;
+           background: var(--panel); border-bottom: 1px solid var(--line); }
+  .logo { width: 36px; height: 36px; border-radius: 10px; background: var(--accent); color: #fff;
+          display: grid; place-items: center; font-weight: 700; }
+  header h1 { font-size: 17px; margin: 0; }
+  header .sub { font-size: 13px; color: var(--muted); }
+  header .spacer { flex: 1; }
+  .tokens { font-size: 13px; color: var(--muted); text-align: right; }
+  .tokens b { color: var(--text); font-variant-numeric: tabular-nums; }
+  /* Явно задаём цвета полям и кнопкам, иначе браузер в тёмной теме красит их в чёрный */
+  :root { color-scheme: light; }
+  button { font: inherit; cursor: pointer; color: var(--text); }
+  .reset { border: 1px solid var(--line); background: var(--panel); border-radius: 8px; padding: 6px 12px; }
+
+  main { flex: 1; display: grid; grid-template-columns: 1fr 380px; gap: 16px; padding: 16px; min-height: 0; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px;
+          display: flex; flex-direction: column; min-height: 0; }
+
+  /* Чат */
+  #messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 12px; }
+  .msg { max-width: 80%; padding: 10px 14px; border-radius: 14px; white-space: pre-wrap; word-wrap: break-word; }
+  .msg.user { align-self: flex-end; background: var(--user); color: var(--user-text); border-bottom-right-radius: 4px; }
+  .msg.bot { align-self: flex-start; background: var(--bot); border-bottom-left-radius: 4px; }
+  .msg.error { align-self: center; background: #fee2e2; color: #991b1b; font-size: 14px; }
+  .typing { color: var(--muted); font-style: italic; }
+
+  .quote { align-self: flex-start; width: min(560px, 100%); border: 2px solid var(--accent);
+           border-radius: 14px; padding: 14px 16px; background: var(--panel); }
+  .quote h3 { margin: 0 0 8px; font-size: 15px; }
+  .quote table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  .quote td, .quote th { padding: 4px 6px; border-bottom: 1px solid var(--line); text-align: left; }
+  .quote td.num, .quote th.num { text-align: right; white-space: nowrap; }
+  .quote .sum { display: flex; justify-content: space-between; font-size: 14px; padding-top: 4px; }
+  .quote .total { font-size: 17px; font-weight: 700; padding-top: 8px; }
+  .quote a { display: inline-block; margin-top: 10px; color: var(--accent); font-weight: 600; }
+  .quote .warn { color: var(--warn); font-size: 13px; margin-top: 6px; }
+
+  .hints { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 20px 12px; }
+  .hints button { border: 1px solid var(--line); background: var(--bg); border-radius: 999px;
+                  padding: 6px 12px; font-size: 13px; }
+  .hints button:hover { border-color: var(--accent); }
+
+  form { display: flex; gap: 8px; padding: 12px; border-top: 1px solid var(--line); }
+  form input { flex: 1; font: inherit; padding: 10px 14px; border: 1px solid var(--line); border-radius: 10px;
+               background: var(--panel); color: var(--text); }
+  form input:focus { outline: 2px solid var(--accent-soft); border-color: var(--accent); }
+  form button { border: 0; background: var(--accent); color: #fff; border-radius: 10px; padding: 0 18px; font-weight: 600; }
+  form button:disabled { opacity: .5; cursor: default; }
+
+  /* Панель агента */
+  .side h2 { font-size: 15px; margin: 0; padding: 14px 16px 4px; }
+  .side .hint { font-size: 13px; color: var(--muted); padding: 0 16px 10px; border-bottom: 1px solid var(--line); }
+  #steps { flex: 1; overflow-y: auto; padding: 12px 16px; display: flex; flex-direction: column; gap: 8px; }
+  .turn { font-size: 12px; color: var(--muted); margin-top: 6px; }
+  .step { border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: 8px; padding: 8px 10px; font-size: 13px; }
+  .step .name { font-weight: 600; }
+  .step .fn { font-family: ui-monospace, Consolas, monospace; font-size: 12px; color: var(--muted); }
+  .step .res { margin-top: 2px; }
+  .step details { margin-top: 4px; }
+  .step summary { cursor: pointer; color: var(--muted); font-size: 12px; }
+  .step pre { margin: 4px 0 0; font-size: 11px; background: var(--bg); padding: 6px; border-radius: 6px;
+              max-height: 200px; overflow: auto; white-space: pre-wrap; }
+  .empty { color: var(--muted); font-size: 13px; }
+
+  @media (max-width: 860px) {
+    body { height: auto; }
+    main { grid-template-columns: 1fr; padding: 12px; }
+    #messages { min-height: 55vh; }
+    .msg { max-width: 92%; }
+    header { flex-wrap: wrap; padding: 10px 16px; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">С</div>
+  <div>
+    <h1>Консультант магазина «Старт»</h1>
+    <div class="sub">ИИ-агент на <span id="model">GigaChat</span> · отвечает по базе знаний и собирает КП</div>
+  </div>
+  <div class="spacer"></div>
+  <div class="tokens">Токенов за разговор: <b id="tok-total">0</b><br>
+    <span id="tok-split">вопрос 0 · ответ 0</span></div>
+  <button class="reset" id="reset">Новый разговор</button>
+</header>
+
+<main>
+  <section class="card">
+    <div id="messages">
+      <div class="msg bot">Здравствуйте! Я консультант магазина спорттоваров «Старт». Подскажу по наличию, ценам, доставке и соберу коммерческое предложение. Что ищете?</div>
+    </div>
+    <div class="hints" id="hints">
+      <button>Нужны беговые кроссовки до 8000, размер 42</button>
+      <button>Сколько стоит доставка и можно ли вернуть товар?</button>
+      <button>Для секции: 5 футбольных мячей и 8 скакалок, соберите КП</button>
+    </div>
+    <form id="form">
+      <input id="input" placeholder="Напишите вопрос…" autocomplete="off" autofocus>
+      <button id="send">Отправить</button>
+    </form>
+  </section>
+
+  <aside class="card side">
+    <h2>Что делает агент</h2>
+    <div class="hint">Инструменты, которые модель сама решила вызвать. Цены и наличие берутся из базы, а не придумываются.</div>
+    <div id="steps"><div class="empty">Пока ничего — задайте вопрос.</div></div>
+  </aside>
+</main>
+
+<script>
+// У каждой вкладки свой разговор: случайный id сессии
+let sessionId = crypto.randomUUID();
+let turn = 0;
+
+const $ = (id) => document.getElementById(id);
+const messages = $("messages"), steps = $("steps"), input = $("input"), sendBtn = $("send");
+
+const TOOL_NAMES = {
+  search_products: "🔍 Поиск по каталогу",
+  check_stock: "📦 Проверка наличия",
+  get_policy: "📄 Условия магазина",
+  make_quote: "🧾 Сборка КП",
+};
+
+const money = (n) => n.toLocaleString("ru-RU") + " ₽";
+
+// Защита от вставки HTML в страницу: превращаем < > & в безопасные символы
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+// Модель иногда пишет **жирный** — показываем его жирным
+const formatText = (s) => escapeHtml(s).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>");
+
+function addMessage(cls, html) {
+  const div = document.createElement("div");
+  div.className = "msg " + cls;
+  div.innerHTML = html;
+  messages.appendChild(div);
+  messages.scrollTop = messages.scrollHeight;
+  return div;
+}
+
+// Одна строка-итог для каждого вызова инструмента
+function summarize(step) {
+  const r = step.result || {};
+  if (r.error) return "⚠️ " + r.error + (r.problems ? ": " + r.problems.join("; ") : "");
+  switch (step.tool) {
+    case "search_products":
+      return r.found ? `найдено ${r.found}: ` + r.products.map((p) => p.name).join(", ") : "ничего не найдено";
+    case "check_stock":
+      return r.size ? `размер ${r.size}: ${r.available} шт.` : `в наличии размеры: ${(r.sizes_in_stock || []).join(", ") || "—"}`;
+    case "get_policy":
+      return "тема: " + r.topic;
+    case "make_quote":
+      return `итог ${money(r.grand_total)}, файл ${r.quote_file}`;
+  }
+  return "";
+}
+
+function addSteps(list, question) {
+  if (turn === 1) steps.innerHTML = "";
+  const head = document.createElement("div");
+  head.className = "turn";
+  head.textContent = `Вопрос ${turn}: «${question.length > 50 ? question.slice(0, 50) + "…" : question}»`;
+  steps.appendChild(head);
+  if (!list.length) {
+    const e = document.createElement("div");
+    e.className = "empty";
+    e.textContent = "Ответил без инструментов";
+    steps.appendChild(e);
+  }
+  for (const s of list) {
+    const div = document.createElement("div");
+    div.className = "step";
+    div.innerHTML = `
+      <div class="name">${TOOL_NAMES[s.tool] || s.tool}</div>
+      <div class="fn">${escapeHtml(s.tool)}(${escapeHtml(JSON.stringify(s.args))})</div>
+      <div class="res">${escapeHtml(summarize(s))}</div>
+      <details><summary>что вернул инструмент</summary><pre>${escapeHtml(JSON.stringify(s.result, null, 2))}</pre></details>`;
+    steps.appendChild(div);
+  }
+  steps.scrollTop = steps.scrollHeight;
+}
+
+// Карточка КП в чате — рисуем из данных инструмента make_quote
+function addQuote(q) {
+  const rows = q.lines.map((l) => `<tr><td>${escapeHtml(l.name)}${l.size ? " (" + escapeHtml(l.size) + ")" : ""}</td>
+    <td class="num">${l.qty} шт.</td><td class="num">${money(l.total)}</td></tr>`).join("");
+  const file = q.quote_file.split(/[\\/]/).pop();
+  const div = document.createElement("div");
+  div.className = "quote";
+  div.innerHTML = `
+    <h3>🧾 Коммерческое предложение</h3>
+    <table><tr><th>Товар</th><th class="num">Кол-во</th><th class="num">Сумма</th></tr>${rows}</table>
+    <div class="sum"><span>Сумма товаров</span><span>${money(q.subtotal)}</span></div>
+    <div class="sum"><span>Скидка ${q.discount_percent}%</span><span>−${money(q.discount)}</span></div>
+    <div class="sum"><span>Доставка (${escapeHtml(q.delivery)})</span><span>${money(q.delivery_cost)}</span></div>
+    <div class="sum total"><span>Итого</span><span>${money(q.grand_total)}</span></div>
+    ${q.problems && q.problems.length ? `<div class="warn">⚠️ ${escapeHtml(q.problems.join("; "))}</div>` : ""}
+    <a href="/quotes/${encodeURIComponent(file)}">Скачать КП (${escapeHtml(file)})</a>`;
+  messages.appendChild(div);
+  messages.scrollTop = messages.scrollHeight;
+}
+
+function updateTokens(t) {
+  $("tok-total").textContent = (t.prompt + t.completion).toLocaleString("ru-RU");
+  $("tok-split").textContent = `вопрос ${t.prompt.toLocaleString("ru-RU")} · ответ ${t.completion.toLocaleString("ru-RU")}`;
+}
+
+async function send(text) {
+  text = text.trim();
+  if (!text || sendBtn.disabled) return;
+  $("hints").style.display = "none";
+  addMessage("user", escapeHtml(text));
+  input.value = "";
+  sendBtn.disabled = true;
+  const typing = addMessage("bot typing", "Консультант думает…");
+  try {
+    const resp = await fetch("/api/ask", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text, session_id: sessionId }),
+    });
+    const data = await resp.json();
+    typing.remove();
+    if (data.error) { addMessage("error", escapeHtml(data.error)); return; }
+    turn += 1;
+    $("model").textContent = data.model;
+    addSteps(data.steps, text);
+    // КП показываем перед текстом ответа, если агент его собрал
+    for (const s of data.steps) {
+      if (s.tool === "make_quote" && s.result && s.result.lines) addQuote(s.result);
+    }
+    addMessage("bot", formatText(data.answer || ""));
+    updateTokens(data.tokens);
+  } catch (e) {
+    typing.remove();
+    addMessage("error", "Сервер не отвечает. Он запущен?");
+  } finally {
+    sendBtn.disabled = false;
+    input.focus();
+  }
+}
+
+$("form").addEventListener("submit", (e) => { e.preventDefault(); send(input.value); });
+$("hints").addEventListener("click", (e) => { if (e.target.tagName === "BUTTON") send(e.target.textContent); });
+$("reset").addEventListener("click", async () => {
+  await fetch("/api/reset", { method: "POST", headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ session_id: sessionId }) });
+  location.reload();
+});
+</script>
+</body>
+</html>
