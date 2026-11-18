@@ -21,6 +21,18 @@ def test_search_finds_running_shoes_under_budget():
     assert "SH-003" not in ids  # 11 990 ₽ — дороже бюджета
 
 
+def test_search_filters_by_size():
+    result = tools.search_products("беговые кроссовки", max_price=8000, size="42")
+    assert {p["id"] for p in result["products"]} == {"SH-001", "SH-002"}
+    result = tools.search_products("кроссовки", size="43", max_price=8000)
+    assert "SH-002" not in {p["id"] for p in result["products"]}  # 43-го нет
+
+
+def test_out_of_stock_status_is_explicit():
+    lamp = tools.search_products("налобный фонарь")["products"][0]
+    assert lamp["status"] == "НЕТ В НАЛИЧИИ"
+
+
 def test_search_by_category():
     result = tools.search_products(category="инвентарь", max_price=1000)
     assert {p["id"] for p in result["products"]} == {"EQ-003"}

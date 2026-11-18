@@ -34,18 +34,24 @@ def _sizes_in_stock(product):
 def _short(product):
     """Короткая карточка товара для модели — только то, что нужно для ответа."""
     sizes = _sizes_in_stock(product)
-    return {
+    card = {
         "id": product["id"],
         "name": product["name"],
         "price": product["price"],
-        "in_stock": bool(sizes),
-        # "one" значит «без размера» (гантели, бутылка и т.п.)
-        "sizes_in_stock": [s for s in sizes if s != "one"],
+        # Словами, а не true/false: так модель меньше путается
+        "status": "в наличии" if sizes else "НЕТ В НАЛИЧИИ",
     }
+    real_sizes = [s for s in sizes if s != "one"]  # "one" = товар без размера
+    if real_sizes:
+        card["sizes_in_stock"] = real_sizes
+    elif sizes:
+        card["qty_in_stock"] = product["stock"]["one"]
+    return card
 
 
-def search_products(query: str = "", category: str = "", max_price: int = 0, limit: int = 5):
-    """Ищет товары по словам из запроса, категории и максимальной цене.
+def search_products(query: str = "", category: str = "", max_price: int = 0,
+                    size: str = "", limit: int = 5):
+    """Ищет товары по словам из запроса, категории, максимальной цене и размеру.
 
     Поиск простой: каждое слово запроса ищем в названии и тегах товара,
     сравнивая первые 4 буквы (так «кроссовки» найдёт и «кроссовок»).
@@ -57,6 +63,9 @@ def search_products(query: str = "", category: str = "", max_price: int = 0, lim
         if category and product["category"] != category.lower():
             continue
         if max_price and product["price"] > max_price:
+            continue
+        # Если покупатель назвал размер — оставляем только то, что есть в этом размере
+        if size and product["stock"].get(str(size).upper(), product["stock"].get(str(size), 0)) == 0:
             continue
         text = (product["name"] + " " + " ".join(product["tags"])).lower()
         text_words = text.split()
